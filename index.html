@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WebXR Striped Room</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; overflow: hidden; background: black; color: white; font-family: sans-serif; }
+    #ui {
+      position: absolute;
+      top: 10px; left: 10px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 6px;
+      z-index: 10;
+    }
+    label { display: block; margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <label>Stripe Width: <input type="range" id="width" min="2" max="40" value="10"></label>
+    <label>Speed: <input type="range" id="speed" min="0" max="2" step="0.01" value="0.2"></label>
+  </div>
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    import { VRButton } from 'https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js';
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+    document.body.appendChild(VRButton.createButton(renderer));
+
+    const light = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(light);
+
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(20, 2);
+
+    function makeStripes(stripeWidth=10) {
+      ctx.fillStyle = "black";
+      ctx.fillRect(0,0,size,size);
+      for (let x=0; x<size; x+=stripeWidth*2) {
+        ctx.fillStyle = "white";
+        ctx.fillRect(x, 0, stripeWidth, size);
+      }
+      texture.needsUpdate = true;
+    }
+    makeStripes(10);
+
+    const geometry = new THREE.CylinderGeometry(10, 10, 5, 128, 1, true);
+    const material = new THREE.MeshBasicMaterial({map: texture, side: THREE.BackSide});
+    const cylinder = new THREE.Mesh(geometry, material);
+    scene.add(cylinder);
+
+    let rotationSpeed = 0.2;
+
+    document.getElementById("width").addEventListener("input", (e)=>{
+      makeStripes(parseInt(e.target.value));
+    });
+    document.getElementById("speed").addEventListener("input", (e)=>{
+      rotationSpeed = parseFloat(e.target.value);
+    });
+
+    renderer.setAnimationLoop(()=>{
+      cylinder.rotation.y += rotationSpeed * 0.01;
+      renderer.render(scene, camera);
+    });
+
+    window.addEventListener('resize', ()=>{
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
